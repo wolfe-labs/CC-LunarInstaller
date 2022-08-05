@@ -1,5 +1,6 @@
 --[[
   Installer script for CC: Tweaked (and maybe CC?)
+  Source: https://github.com/wolfe-labs/CC-LunarInstaller
   Paste: pastebin run Mt7h3gfz install/uninstall [source] [package] [options]
   Local: lunar install/uninstall [source] [package] [options]
 ]]
