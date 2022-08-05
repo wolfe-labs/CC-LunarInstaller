@@ -236,12 +236,14 @@ local pkg_installers = {
     local files = textutils.unserializeJSON(req.readAll())
 
     -- Downloads each of the files
+    local file_num = 0
     for _, file in pairs(files.tree) do
+      file_num = file_num + 1
       local path = joinpath(destination, file.path)
       if 'tree' == file.type then
         fs.makeDir(path)
       elseif 'blob' == file.type then
-        printf('Copy: %s', file.path)
+        printf('Copy [%d/%d]: %s', file_num, #files.tree, file.path)
         local req, err = http.get(string.format('https://raw.githubusercontent.com/%s/%s/%s', repo, branch, file.path))
         if not req then errorf('Failed to fetch file: %s', err) end
         file_write(path, req.readAll())
@@ -309,30 +311,36 @@ function install_package (package, extra_options)
 
   -- Checks if there's a version of the package installed
   if fs.exists(install_pkg) then
+    print('')
     print('Found previous version of package installed, performing uninstall...')
     uninstall_package(install_dir)
   end
 
   -- Puts down new metadata file
+  print('')
   print('Installing package metadata...')
   file_write(install_pkg, textutils.serializeJSON(package))
 
   -- Installs
+  print('')
   print('Installing new files...')
   fs.makeDir(install_dir)
   installer(package, install_dir)
 
   -- Creates binary shortcuts
+  print('')
+  print('Linking binaries...')
   for bin, bin_data in pairs(package.bin or {}) do
     -- Parses binary
     bin = shortcut(bin, bin_data, install_dir)
 
     -- Writes the shortcut file
-    printf('Linking "%s" -> %s', bin.name, bin.target)
+    printf('%s -> %s', bin.name, bin.target)
     file_write(bin.bin, string.format('_=shell.dir();shell.setDir("%s");shell.run("%s",...);shell.setDir(_)', bin.target_dir, bin.target))
   end
 
   -- Shows installed files
+  print('')
   print('Install complete! New commands:')
   for bin, bin_data in pairs(package.bin or {}) do
     bin = shortcut(bin, bin_data, install_dir)
