@@ -4,7 +4,11 @@ This is a small install utility for ComputerCraft and CC: Tweaked, it allows you
 
 ## Installing Packages
 
-To install a new package you can run the installer directly from Pastebin: `pastebin run Mt7h3gfz install/uninstall [source] [package]`, replacing the `[source]` with where to fetch your package from (currently only supports `github`), followed by the package name, in this case, using the `owner/repo-name` format.
+To install a new package you can run the installer directly from Pastebin: `pastebin run Mt7h3gfz install/uninstall [source] [package] [options]`, replacing the `[source]` with where to fetch your package from (currently only supports `github`), followed by the package name, in this case, using the `owner/repo-name` format.
+
+For options you can add any of the JSON properties, prefixed with `--`, as far you use a dot to separate parts from the config.
+
+In that case, if you want to override a package's default branch to, let's say, a development branch, just add `--source.branch=your-new-branch`
 
 ## Creating a new Package
 
