@@ -22,6 +22,15 @@ local extra_options = {}
 function printf (format, ...) return print(string.format(format, ...)) end
 function errorf (format, ...) return error(string.format(format, ...)) end
 
+-- Better array length
+function count (table)
+  local num = 0
+  for _ in pairs(table) do
+    num = num + 1
+  end
+  return num
+end
+
 -- Split strings
 function str_split (str, sep)
   local pieces = {}
@@ -174,6 +183,20 @@ function inflate (table)
   return result
 end
 
+-- Reads package from string
+function str2pkg (str)
+    -- Parses data
+    local pkg, err = textutils.unserializeJSON(str)
+
+    -- Handles invalid data
+    if not pkg then
+      errorf('Error reading package file: %s', err)
+    end
+
+    -- Valid file, returns metadata
+    return pkg
+end
+
 ----------------------------------------------
 -- This is our data source setup
 ----------------------------------------------
@@ -189,16 +212,21 @@ local pkg_sources = {
       errorf('Error fetching package "%s" from GitHub: %s', pkg, err)
     end
 
-    -- Parses file
-    local data, err = textutils.unserializeJSON(req.readAll())
+    -- Parses response
+    return str2pkg(req.readAll())
+  end,
 
-    -- Handles invalid file
-    if not data then
-      errorf('Error reading package file: %s', err)
+  -- Read package from Pastebin
+  pastebin = function (pkg)
+    local req, err = http.get('https://pastebin.com/raw/' .. pkg)
+
+    -- Handles not found
+    if not req then
+      errorf('Error fetching package "%s" from Pastebin: %s', pkg, err)
     end
 
-    -- Valid file, returns metadata
-    return data
+    -- Parses response
+    return str2pkg(req.readAll())
   end,
 }
 
@@ -238,17 +266,43 @@ local pkg_installers = {
 
     -- Downloads each of the files
     local file_num = 0
+    local file_max = count(files.tree)
     for _, file in pairs(files.tree) do
       file_num = file_num + 1
       local path = joinpath(destination, file.path)
       if 'tree' == file.type then
         fs.makeDir(path)
       elseif 'blob' == file.type then
-        printf('Copy [%d/%d]: %s', file_num, #files.tree, file.path)
+        printf('Copy [%d/%d]: %s', file_num, file_max, file.path)
         local req, err = http.get(string.format('https://raw.githubusercontent.com/%s/%s/%s', repo, branch, file.path))
         if not req then errorf('Failed to fetch file: %s', err) end
         file_write(path, req.readAll())
       end
+    end
+  end,
+
+  pastebin = function (package, destination)
+    -- Helper to fetch paste
+    local function pb (path)
+      return http.get('https://pastebin.com/raw/' .. path)
+    end
+
+    -- Checks if there's pastes
+    if not package.source.files then
+      error('No paste file IDs found!')
+    end
+
+    -- Goes through each of the paste IDs
+    local files = flatten(package.source.files) -- This is necessary to prevent extensions from breaking, it should not be a deep array anyways
+    local file_num = 0
+    local file_max = count(files)
+    for path, id in pairs(files) do
+      file_num = file_num + 1
+      printf('Copy [%d/%d]: %s', file_num, file_max, path)
+      path = joinpath(destination, path)
+      local req, err = pb(id)
+      if not req then errorf('Failed to fetch file: %s', err) end
+      file_write(path, req.readAll())
     end
   end,
 }
